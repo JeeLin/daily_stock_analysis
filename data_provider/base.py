@@ -14,6 +14,7 @@
 3. 指数退避重试机制
 """
 
+import os
 import logging
 import random
 import time
@@ -482,7 +483,7 @@ class DataFetcherManager:
     - 所有数据源都失败时抛出异常
     """
     
-    def __init__(self, fetchers: Optional[List[BaseFetcher]] = None):
+    def __init__(self, fetchers: Optional[List[BaseFetcher]] = None, cache_file: str = 'stock_names.txt'):
         """
         初始化管理器
         
@@ -505,6 +506,30 @@ class DataFetcherManager:
         self._fundamental_cache_lock = RLock()
         self._fundamental_timeout_worker_limit = 8
         self._fundamental_timeout_slots = BoundedSemaphore(self._fundamental_timeout_worker_limit)
+
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        filepath = os.path.join(script_dir, cache_file)
+        self._stock_name_cache = self._load_stock_names(filepath)
+    
+    def _load_stock_names(self, filepath):
+        """从文件加载股票名称到缓存字典"""
+        cache = {}
+        
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        code = parts[0]
+                        name = ' '.join(parts[1:])
+                        cache[code] = name
+
+        logger.info(f"已加载 {len(cache)} 只股票")
+        return cache
 
     def _get_tickflow_fetcher(self):
         """Lazily create a TickFlow fetcher for market-review-only calls."""
