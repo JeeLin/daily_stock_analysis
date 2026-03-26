@@ -9,10 +9,6 @@ on:
         default: 'latest'
 
 env:
-  GHCR_REGISTRY: ghcr.io
-  DOCKERHUB_REGISTRY: docker.io
-  # GitHub 仓库全名作为 GHCR 镜像名
-  GHCR_IMAGE_NAME: ${{ github.repository }}
   # Docker Hub 镜像名（需要根据实际情况设置）
   DOCKERHUB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
 
@@ -38,40 +34,20 @@ jobs:
       - name: Set up QEMU for multi-platform build
         uses: docker/setup-qemu-action@v3
 
-      # 登录到 GHCR
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.GHCR_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       # 登录到 Docker Hub（需要预先设置 secrets.DOCKERHUB_USERNAME 和 secrets.DOCKERHUB_TOKEN）
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKERHUB_REGISTRY }}
+          registry: ${{ secrets.DOCKERHUB_REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 为 GHCR 生成元数据
-      - name: Extract metadata for GHCR
-        id: meta-ghcr
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ inputs.image_tag }}
-            type=raw,value=latest,enable=${{ inputs.image_tag != 'latest' }}
-          flavor: |
-            latest=true
 
       # 为 Docker Hub 生成元数据
       - name: Extract metadata for Docker Hub
         id: meta-dockerhub
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}
+          images: ${{ secrets.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}
           tags: |
             type=raw,value=${{ inputs.image_tag }}
             type=raw,value=latest,enable=${{ inputs.image_tag != 'latest' }}
@@ -87,9 +63,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ steps.meta-ghcr.outputs.tags }}
             ${{ steps.meta-dockerhub.outputs.tags }}
-          labels: ${{ steps.meta-ghcr.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -98,11 +72,10 @@ jobs:
           echo "### Docker Images Built and Pushed Successfully 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**GitHub Container Registry (GHCR):**" >> $GITHUB_STEP_SUMMARY
-          echo "- Image: \`${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Tags: ${{ inputs.image_tag }}${{ inputs.image_tag != 'latest' && ', latest' || '' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Docker Hub:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Image: \`${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: \`${{ secrets.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Tags: ${{ inputs.image_tag }}${{ inputs.image_tag != 'latest' && ', latest' || '' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
@@ -110,10 +83,9 @@ jobs:
           echo "### Pull Commands:" >> $GITHUB_STEP_SUMMARY
           echo "**GHCR:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_NAME }}:${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Docker Hub:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}:${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ secrets.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_IMAGE_NAME }}:${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
